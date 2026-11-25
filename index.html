@@ -432,7 +432,7 @@ function updTurret(e){var t0=tgt(e),cx=e.x+7,cy=e.y+3,dx=t0.x+5-cx,dy=t0.y+7-cy;
 function updWave(e){e.x+=e.vx;e.life--;var fc=Math.floor((e.vx>0?e.x+e.w:e.x)/TS);if(tileAt(fc,Math.floor((e.y+5)/TS))===1||e.life<=0)e.dead=true;
  if(R()<0.5)part(e.x+5,e.y+8,(R()-0.5),-R()*1.5,20,L.theme.acc,2,0.05);if(!e.dead)hurtOverlap(e,e.x+5);}
 function startBoss(){var A=L.arena;A.started=true;for(var r=0;r<13;r++)L.tiles[r][A.c0]=1;cam.shake=Math.max(cam.shake,10);flash=16;flashCol='#ff3d5a';sfx('boom');sfx('warn');
- boss={t:'boss',x:(A.c0+15)*TS,y:-60,vx:0,vy:0,w:40,h:44,hp:90,maxhp:90,flash:0,state:'intro',timer:0,face:-1,phase:1,active:true,landed:false,last:'',shots:0,cface:-1,onGround:false};
+ boss={t:'boss',x:(A.c0+15)*TS,y:-60,vx:0,vy:0,w:40,h:44,hp:players.length===1?36:90,maxhp:players.length===1?36:90,flash:0,state:'intro',timer:0,face:-1,phase:1,active:true,landed:false,last:'',shots:0,cface:-1,onGround:false};
  ents.push(boss);setMusic('boss');for(var k=0;k<L.cps.length;k++)if(L.cps[k].arena){L.cps[k].on=true;cpReached(L.cps[k]);}
  ftext(A.x0+VW/2,80,'WARNING','#ff3d5a');}
 function nextB(e,s){e.state=s;e.timer=0;e.shots=0;}
@@ -443,9 +443,9 @@ function updateBoss(e){e.timer++;var dx=(tgt(e).x+5)-(e.x+e.w/2);
  switch(e.state){
   case 'intro':if(e.onGround&&!e.landed){e.landed=true;cam.shake=12;flash=10;flashCol='#ffffff';sfx('boom');burst(e.x+20,e.y+44,24,'#bbb',2.5,30);ftext(e.x+20,e.y-12,'WARDEN MK-IV','#ff3d5a');}
    if(e.landed&&e.timer>110)nextB(e,'idle');break;
-  case 'idle':e.vx*=0.8;if(Math.abs(e.vx)<0.05)e.vx=0;if(e.timer>(e.phase===2?28:48)){var opts=['spread','slam','summon'];if(e.phase===2){opts.push('charge');opts.push('charge');}
+  case 'idle':e.vx*=0.8;if(Math.abs(e.vx)<0.05)e.vx=0;if(e.timer>(e.phase===2?28:48)+(players.length===1?48:0)){var opts=['spread','slam','summon'];if(e.phase===2){opts.push('charge');opts.push('charge');}
    var pick=e.last;while(pick===e.last)pick=opts[Math.floor(R()*opts.length)];e.last=pick;nextB(e,pick);}break;
-  case 'spread':e.vx=0;if(e.timer%24===12){fan(e,e.phase===2?7:5,2.3);e.shots++;}if(e.shots>=3&&e.timer%24===20)nextB(e,'idle');break;
+  case 'spread':e.vx=0;if(e.timer%24===12){fan(e,(e.phase===2?7:5)-(players.length===1?1:0),2.3);e.shots++;}if(e.shots>=3&&e.timer%24===20)nextB(e,'idle');break;
   case 'slam':if(e.timer===1){e.vy=-7.5;e.vx=clamp(dx/48,-3.2,3.2);e.onGround=false;}
    else if(e.onGround&&e.timer>5){cam.shake=9;sfx('boom');burst(e.x+20,e.y+44,16,'#bbb',2,24);
     ents.push({t:'wave',x:e.x-4,y:e.y+e.h-10,w:10,h:10,vx:-2.8,life:200,active:true,flash:0});
