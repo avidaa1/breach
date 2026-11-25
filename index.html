@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-Uxo1hqXfEpYNBA2tPFJMreyDnul/0nJbTVsh4pGStNg=' 'sha256-nieHkMHSL+dfq2GWQnIWdjRSa6Z/7S9BMYfV3bYgY14='; style-src 'sha256-jzSLJMFrsRiBuJeDxnkQ0iQE3ZLeOZu5e6J1sXpjW/8=' 'sha256-ins8INRPg9cM8mQcAf4hQ60zrBMdc7fjyKnPOpgHZg8='; img-src data:; connect-src 'none'; font-src 'none'; media-src 'none'; object-src 'none'; frame-src 'none'; worker-src 'none'; manifest-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-CMyUNPldeGuM2GWg0MsLVSDUCCkwFsoHRbY/RD5VmT8=' 'sha256-obv9JW994oACeeJD6HxUimjwarsURoJHS3Tdw2QXsmI='; style-src 'sha256-jzSLJMFrsRiBuJeDxnkQ0iQE3ZLeOZu5e6J1sXpjW/8=' 'sha256-ins8INRPg9cM8mQcAf4hQ60zrBMdc7fjyKnPOpgHZg8='; img-src data:; connect-src 'none'; font-src 'none'; media-src 'none'; object-src 'none'; frame-src 'none'; worker-src 'none'; manifest-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>AVIDAA Breach</title>
@@ -198,8 +198,12 @@ function readInput(){pollPad();consumed={};
 
 /* ---------- audio ---------- */
 var AC=null,master=null,muted=store.get('avb_mute')==='1';
-function unlockAudio(){if(AC){if(AC.state==='suspended'&&AC.resume)AC.resume();return;}
- try{var C=window.AudioContext||window.webkitAudioContext;if(!C)return;AC=new C();master=AC.createGain();master.gain.value=muted?0:0.5;var cp=AC.createDynamicsCompressor();cp.threshold.value=-14;cp.knee.value=18;cp.ratio.value=6;cp.attack.value=0.003;cp.release.value=0.2;master.connect(cp);cp.connect(AC.destination);}catch(e){AC=null;}}
+function audioRunning(){return !!AC&&(!AC.state||AC.state==='running');}
+function audioReady(){if(!audioRunning())return;try{musicTick();}catch(e){}}
+function tryResume(){if(!AC||!AC.resume||audioRunning())return;try{var pr=AC.resume();if(pr&&pr.then)pr.then(audioReady,function(){});}catch(e){}}
+function unlockAudio(){if(AC){if(AC.state==='suspended')tryResume();else audioReady();return;}
+ try{var C=window.AudioContext||window.webkitAudioContext;if(!C)return;AC=new C();master=AC.createGain();master.gain.value=muted?0:0.5;var cp=AC.createDynamicsCompressor();cp.threshold.value=-14;cp.knee.value=18;cp.ratio.value=6;cp.attack.value=0.003;cp.release.value=0.2;master.connect(cp);cp.connect(AC.destination);tryResume();audioReady();}catch(e){AC=null;}}
+(function(){var evs=['keydown','keyup','mousedown','mouseup','click','pointerdown','pointerup','touchstart','touchend'],i;for(i=0;i<evs.length;i++)window.addEventListener(evs[i],function(){unlockAudio();},true);})();
 function toggleMute(){muted=!muted;store.set('avb_mute',muted?'1':'0');if(master)master.gain.value=muted?0:0.5;}
 function tone(f,d,type,v,slide,t0){if(!AC||muted)return;try{var t=t0||AC.currentTime;var o=AC.createOscillator(),g=AC.createGain();o.type=type;o.frequency.setValueAtTime(f,t);if(slide)o.frequency.exponentialRampToValueAtTime(slide,t+d);g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(0.0008,t+d);o.connect(g);g.connect(master);o.start(t);o.stop(t+d+0.03);}catch(e){}}
 var NB=null;
@@ -372,6 +376,7 @@ function upr(p){return !p.dead&&!p.down;}
 function refill(t,m){for(var w=0;w<3;w++)if(t.kit.own[w])t.kit.ammo[w]=Math.min(WEAP[w].mx,t.kit.ammo[w]+WEAP[w].pk*m);}
 function giveShield(q){q.kit.sh=3;q.kit.st=1800;}
 var titleArt=buildArt(THEMES[0],77);
+setMusic('title');
 
 function tileAt(c,r){if(c<0||c>=L.W)return 1;if(r<0||r>=ROWS)return 0;return L.tiles[r][c];}
 function moveX(e){e.hitWall=false;if(!e.vx)return;e.x+=e.vx;var r0=Math.floor(e.y/TS),r1=Math.floor((e.y+e.h-0.01)/TS),c,r;
@@ -395,7 +400,7 @@ function startLevel(i){level=i;if(i>unl&&i<CFG.length){unl=i;store.set('avb_unl'
  P=players[0];syncScore();cam.x=0;cam.shake=0;levelTime=0;levelStartScore=score;mode='intro';timer=0;comboN=0;comboT=0;flash=0;setMusic('l'+i);}
 function startGame(lv){if(!SLOTS.length)addSlot('kb');unlockAudio();score=0;team.c=0;lives=LIVES[diff];totalTime=0;newBest=false;players=[];startLevel(lv);}
 function retry(){lives=LIVES[diff];team.c=team.c0;for(var i=0;i<players.length;i++){players[i].score=players[i].ls;if(players[i].kit0)players[i].kit=copyKit(players[i].kit0);}syncScore();startLevel(level);}
-function toTitle(){mode='title';scr='main';timer=0;setMusic('title');}
+function toTitle(){mode='title';scr='main';timer=0;if(mus.name!=='title')setMusic('title');}
 function addScore(p,n){score+=n;if(p)p.score+=n;}
 function awardAll(n){score+=n;var c=players.length||1;for(var i=0;i<players.length;i++)players[i].score+=n/c;}
 function syncScore(){var t=0;for(var i=0;i<players.length;i++)t+=players[i].score;score=t;}
@@ -840,7 +845,7 @@ function step(){readInput();frame++;if(flash>0)flash--;
   case 'win':timer++;updParts();if(timer%20===0)explode(60+R()*360,40+R()*120,false);if(timer>120&&anyGo())toTitle();break;
  }
  if(saveMsgT>0)saveMsgT--;
- if(mode==='play'||mode==='intro'||mode==='title'||mode==='shop')musicTick();}
+ if(mode==='play'||mode==='intro'||mode==='title'||mode==='shop'||mode==='splash')musicTick();}
 
 /* ---------- drawing ---------- */
 function txt(s,x,y,size,col,align){if(size<=12)size=Math.round(size*TXS*10)/10;ctx.font='bold '+size+'px "Courier New",monospace';ctx.textAlign=align||'left';ctx.textBaseline='top';ctx.fillStyle='rgba(0,0,0,.7)';ctx.fillText(s,x+1,y+1);ctx.fillStyle=col;ctx.fillText(s,x,y);}
@@ -994,7 +999,8 @@ function drawMain(){
  else{var w=74,x0=VW/2-SLOTS.length*w/2;for(i=0;i<SLOTS.length;i++)txt('P'+(i+1)+' '+(SLOTS[i].src==='kb'?'KEYS':'PAD '+(SLOTS[i].src+1)),x0+i*w+w/2,204,8,PCOL[i],'center');
   if(SLOTS.length<4)txt('CROSS ON ANOTHER PAD TO JOIN',VW/2,215,8,'#6a8a7a','center');}
  txt('BEST '+pad7(best),VW/2,226,10,'#ffd23d','center');if(saveMsgT>0)txt(saveMsg,VW/2,242,8,'#6dff9a','center');
- if(saveMsgT<=0)txt('AVIDAA * IO   V1.4',VW/2,242,8,'#6a8a7a','center');}
+ if(saveMsgT<=0)txt('AVIDAA * IO   V1.4',VW/2,242,8,'#6a8a7a','center');
+ if(!audioRunning()&&musicOn&&!muted)txt('PRESS ANY BUTTON FOR SOUND',VW/2,258,9,'#ffd23d','center');}
 function drawLevels(){txt('LEVEL SELECT',VW/2,40,18,'#3dff8a','center');
  for(var i=0;i<=CFG.length;i++){var y=92+i*22,sel=i===curLev;
   if(sel){ctx.fillStyle='rgba(61,255,138,.18)';ctx.fillRect(140,y-3,200,22);ctx.fillStyle='#3dff8a';ctx.fillRect(140,y-3,2,22);ctx.fillRect(338,y-3,2,22);}
@@ -1045,6 +1051,7 @@ function drawSplash(){var t=timer,i,lw=330,x0=VW/2-lw/2,p=clamp((t-20)/50,0,1),f
  for(i=0;i<parts.length;i++){var q=parts[i];ctx.fillStyle=q.col;ctx.fillRect(Math.round(q.x),Math.round(q.y),q.sz,q.sz);}
  if(t>78){ctx.globalAlpha=clamp((t-78)/20,0,1);txt('B R E A C H',VW/2,152,18,'#d8ffe8','center');ctx.fillStyle='#3dff8a';ctx.fillRect(VW/2-100,176,Math.round(200*clamp((t-80)/25,0,1)),1);ctx.globalAlpha=1;txt('AVIDAA * IO',VW/2,190,8,'#6a8a7a','center');}
  if(t>40&&(frame>>5)%2===0)txt('ANY BUTTON, KEY OR TAP TO SKIP',VW/2,240,8,'#6a8a7a','center');
+ if(!audioRunning()&&musicOn&&!muted)txt('PRESS ANY BUTTON FOR SOUND',VW/2,256,9,'#ffd23d','center');
  if(t>=178){ctx.fillStyle='rgba(2,4,10,'+(1-fd).toFixed(2)+')';ctx.fillRect(0,0,VW,VH);}}
 function drawWarning(){if(!boss||boss.dead||boss.state!=='intro'||boss.timer>110)return;var on=(frame>>3)%2===0;
  ctx.fillStyle='rgba(110,0,20,.6)';ctx.fillRect(0,92,VW,46);ctx.fillStyle=on?'#ff3d5a':'#7a1224';ctx.fillRect(0,92,VW,2);ctx.fillRect(0,136,VW,2);
@@ -1085,9 +1092,9 @@ window.AVB={mk:function(t,x,y){var e=makeEnemy({t:t,x:x,y:y,minX:x-40,maxX:x+40}
 })();
 </script>
 <script id="av-shell-20261124">/* AVIDAA shell: shared header (or floating pill) + footer with the "Last updated" stamp. No outside calls, no tracking.
-   Template tokens are replaced when a page is built: Breach --av-games Games 2026-11-25 05:38 */
+   Template tokens are replaced when a page is built: Breach --av-games Games 2026-11-25 05:55 */
 (function(){
-  var NAME='Breach',SECTOR='--av-games',STAMP='2026-11-25 05:38',HOME='https://avidaa1.github.io/';
+  var NAME='Breach',SECTOR='--av-games',STAMP='2026-11-25 05:55',HOME='https://avidaa1.github.io/';
   var ARROW='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   function build(){
     if(!document.body||document.querySelector('.av-footer'))return;
